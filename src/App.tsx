@@ -1,171 +1,200 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 
-// ─── Intersection Observer Hook ────────────────────────────────────
-function useReveal() {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-80px' });
-  return { ref, isInView };
+// ─── Simple reveal on scroll ────────────────────────────────────
+function useRevealOnScroll() {
+  useEffect(() => {
+    let observer: IntersectionObserver | null = null;
+    
+    const timer = setTimeout(() => {
+      const elements = document.querySelectorAll('.reveal');
+      if (elements.length === 0) return;
+      
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+            }
+          });
+        },
+        { threshold: 0.12, rootMargin: '-40px' }
+      );
+      
+      elements.forEach((el) => observer!.observe(el));
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      if (observer) observer.disconnect();
+    };
+  }, []);
 }
 
-// ─── Navigation ────────────────────────────────────────────────────
+// ─── Navigation ──────────────────────────────────────────────────
 function Navigation() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return (
     <nav
-      className={`fixed top-0 right-0 left-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? 'bg-cream/90 backdrop-blur-sm py-4'
-          : 'bg-transparent py-6'
-      }`}
+      style={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        left: 0,
+        zIndex: 50,
+        transition: 'all 0.5s ease',
+        padding: scrolled ? '16px 0' : '24px 0',
+        backgroundColor: scrolled ? 'rgba(247, 243, 237, 0.92)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(8px)' : 'none',
+      }}
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
-        <a href="#" className="font-serif text-2xl md:text-3xl font-medium text-warm-black tracking-wide">
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <a href="#" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 400, color: '#1C1712', textDecoration: 'none', letterSpacing: '0.02em' }}>
           سُكون
         </a>
-        <div className="flex items-center gap-8 text-sm font-light text-warm-brown">
-          <a href="#philosophy" className="hover-line hidden md:block">فلسفتنا</a>
-          <a href="#coffee" className="hover-line hidden md:block">القهوة</a>
-          <a href="#visit" className="hover-line hidden md:block">زُرنا</a>
+        <div style={{ display: 'flex', gap: 32, fontSize: 14, fontWeight: 300, color: '#3D3228' }}>
+          <a href="#philosophy" className="hover-line" style={{ color: 'inherit', textDecoration: 'none' }}>فلسفتنا</a>
+          <a href="#coffee" className="hover-line" style={{ color: 'inherit', textDecoration: 'none' }}>القهوة</a>
+          <a href="#visit" className="hover-line" style={{ color: 'inherit', textDecoration: 'none' }}>زُرنا</a>
         </div>
       </div>
     </nav>
   );
 }
 
-// ─── Hero Section ──────────────────────────────────────────────────
-function HeroSection() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start start', 'end start'],
-  });
-  const imageY = useTransform(scrollYProgress, [0, 1], ['0%', '15%']);
-  const textOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+// ─── Hero ────────────────────────────────────────────────────────
+function Hero() {
+  const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoaded(true), 100);
+    const onScroll = () => {
+      if (imgRef.current) {
+        const y = window.scrollY * 0.15;
+        imgRef.current.style.transform = `translateY(${y}px)`;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { clearTimeout(t); window.removeEventListener('scroll', onScroll); };
+  }, []);
 
   return (
-    <section ref={ref} className="relative min-h-screen flex items-end overflow-hidden grain">
-      {/* Background image */}
-      <motion.div
-        style={{ y: imageY }}
-        className="absolute inset-0 w-full h-full"
-      >
+    <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
+      <div ref={imgRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
         <img
           src="https://image.qwenlm.ai/generated-images/dda587cf-7929-4e73-9714-8dccadfbbc45/_result.png"
           alt="أجواء سُكون"
-          className="w-full h-[120%] object-cover"
+          style={{ width: '100%', height: '120%', objectFit: 'cover' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-warm-black/80 via-warm-black/30 to-warm-black/10" />
-      </motion.div>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,23,18,0.8), rgba(28,23,18,0.3) 50%, rgba(28,23,18,0.1))' }} />
+      </div>
 
-      {/* Content */}
-      <motion.div
-        style={{ opacity: textOpacity }}
-        className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pb-16 md:pb-24"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
-          <div className="md:col-span-7 md:col-start-1">
-            <p className="text-copper-light text-sm tracking-widest mb-4 animate-fade-up opacity-0 delay-300" style={{ animationFillMode: 'forwards' }}>
+      <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: 1280, margin: '0 auto', padding: '0 48px 96px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 32, alignItems: 'flex-end' }}>
+          <div style={{ gridColumn: 'span 7' }}>
+            <p style={{
+              color: '#C4956A', fontSize: 13, letterSpacing: '0.15em', marginBottom: 16,
+              opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(24px)',
+              transition: 'all 0.7s ease', transitionDelay: '0.3s',
+            }}>
               قهوة تأمّل
             </p>
-            <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl text-cream font-light leading-[1.1] animate-fade-up opacity-0 delay-500" style={{ animationFillMode: 'forwards' }}>
+            <h1 style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 'clamp(48px, 8vw, 104px)',
+              fontWeight: 300,
+              color: '#F7F3ED',
+              lineHeight: 1.1,
+              opacity: loaded ? 1 : 0,
+              transform: loaded ? 'translateY(0)' : 'translateY(24px)',
+              transition: 'all 0.7s ease',
+              transitionDelay: '0.5s',
+            }}>
               في كل رشفة،<br />
-              <span className="italic font-light">لحظة صمت</span>
+              <span style={{ fontStyle: 'italic' }}>لحظة صمت</span>
             </h1>
           </div>
-          <div className="md:col-span-3 md:col-start-9">
-            <p className="text-cream/70 text-sm leading-relaxed animate-fade-up opacity-0 delay-800" style={{ animationFillMode: 'forwards' }}>
+          <div style={{ gridColumn: 'span 3', gridColumnStart: 9 }}>
+            <p style={{
+              color: 'rgba(247,243,237,0.7)', fontSize: 14, lineHeight: 1.7,
+              opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(24px)',
+              transition: 'all 0.7s ease', transitionDelay: '0.8s',
+            }}>
               مكانٌ وُلد من فكرة بسيطة: أن القهوة ليست مجرد مشروب، بل طقسٌ يومي يستحق التروي والتأمل.
             </p>
           </div>
         </div>
-      </motion.div>
-
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-fade-in opacity-0 delay-1000" style={{ animationFillMode: 'forwards' }}>
-        <div className="w-px h-12 bg-cream/30 relative overflow-hidden">
-          <div className="w-full h-1/2 bg-copper-light absolute top-0 animate-[scrollDown_2s_ease-in-out_infinite]" />
-        </div>
       </div>
 
-      <style>{`
-        @keyframes scrollDown {
-          0% { top: -50%; }
-          100% { top: 100%; }
-        }
-      `}</style>
+      {/* Scroll indicator */}
+      <div style={{
+        position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+        opacity: loaded ? 1 : 0, transition: 'opacity 0.7s ease', transitionDelay: '1s',
+      }}>
+        <div style={{ width: 1, height: 48, backgroundColor: 'rgba(247,243,237,0.3)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '50%', backgroundColor: '#C4956A', position: 'absolute', animation: 'scrollDown 2s ease-in-out infinite' }} />
+        </div>
+      </div>
     </section>
   );
 }
 
-// ─── Transition Divider ───────────────────────────────────────────
-function Divider({ dark = false }: { dark?: boolean }) {
-  const { ref, isInView } = useReveal();
+// ─── Divider ─────────────────────────────────────────────────────
+function Divider() {
   return (
-    <div ref={ref} className={`py-4 ${dark ? 'bg-warm-black' : 'bg-cream'}`}>
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <motion.div
-          initial={{ scaleX: 0 }}
-          animate={isInView ? { scaleX: 1 } : {}}
-          transition={{ duration: 1.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className={`h-px origin-right ${dark ? 'bg-warm-brown/30' : 'bg-warm-gray-light'}`}
-        />
+    <div style={{ padding: '16px 0', backgroundColor: '#F7F3ED' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px' }}>
+        <div className="reveal line-grow" style={{ height: 1, backgroundColor: '#E8E0D4' }} />
       </div>
     </div>
   );
 }
 
-// ─── Philosophy Section ────────────────────────────────────────────
-function PhilosophySection() {
-  const { ref, isInView } = useReveal();
-
+// ─── Philosophy ──────────────────────────────────────────────────
+function Philosophy() {
   return (
-    <section id="philosophy" className="py-24 md:py-40 bg-cream">
-      <div ref={ref} className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
-          {/* Right column - large statement */}
-          <div className="md:col-span-5 md:col-start-1">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
-              <div className="w-12 h-px bg-copper mb-8" />
-              <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl font-light leading-[1.2] text-warm-black">
+    <section id="philosophy" style={{ padding: '96px 0', backgroundColor: '#F7F3ED' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 32 }}>
+          <div style={{ gridColumn: 'span 5' }}>
+            <div className="reveal">
+              <div style={{ width: 48, height: 1, backgroundColor: '#A67C52', marginBottom: 32 }} />
+              <h2 style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: 'clamp(36px, 5vw, 72px)',
+                fontWeight: 300,
+                lineHeight: 1.2,
+                color: '#1C1712',
+              }}>
                 لا نبيع<br />قهوة فحسب،<br />
-                <span className="text-copper">بل وقتًا</span><br />
+                <span style={{ color: '#A67C52' }}>بل وقتًا</span><br />
                 تستحقّه
               </h2>
-            </motion.div>
+            </div>
           </div>
 
-          {/* Left column - philosophy text */}
-          <div className="md:col-span-5 md:col-start-7 md:pt-24">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
-              <p className="text-warm-brown text-base md:text-lg leading-[1.9] mb-8">
+          <div style={{ gridColumn: 'span 5', gridColumnStart: 7, paddingTop: 96 }}>
+            <div className="reveal reveal-delay-2">
+              <p style={{ color: '#3D3228', fontSize: 17, lineHeight: 1.9, marginBottom: 32 }}>
                 في عالمٍ لا يتوقف عن الصراخ، اخترنا أن نكون همسة. سُكون ليس مقهى عابرًا — إنه مساحة صُمّمت بعناية لتعيد لك اتصالك بلحظة الحاضر.
               </p>
-              <p className="text-warm-gray text-sm md:text-base leading-[1.9] mb-10">
+              <p style={{ color: '#B8AFA3', fontSize: 15, lineHeight: 1.9, marginBottom: 40 }}>
                 نختار حبوبنا من مزارع صغيرة تعرف أسماء مزارعيها. نحمّصها ببطء، ونحضّرها بصبر. كل تفصيل هنا — من صوت الموسيقى الخافتة إلى ملمس الكوب في يدك — مقصود ومدروس.
               </p>
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-warm-gray-light flex items-center justify-center">
-                  <span className="text-warm-brown text-xs font-serif">س</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#E8E0D4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: '#3D3228', fontSize: 12, fontFamily: "'Cormorant Garamond', serif" }}>س</span>
                 </div>
-                <span className="text-warm-gray text-sm">تأسس ٢٠٢١</span>
+                <span style={{ color: '#B8AFA3', fontSize: 14 }}>تأسس ٢٠٢١</span>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
       </div>
@@ -173,77 +202,78 @@ function PhilosophySection() {
   );
 }
 
-// ─── Coffee Section ────────────────────────────────────────────────
-function CoffeeSection() {
-  const { ref, isInView } = useReveal();
-
+// ─── Coffee ──────────────────────────────────────────────────────
+function Coffee() {
   const coffees = [
-    {
-      name: 'إثيوبيا يرغاتشيف',
-      origin: 'إثيوبيا',
-      notes: 'ياسمين، برغموت، حمضيات',
-      method: 'تقطير بطيء',
-      price: '٢٨',
-    },
-    {
-      name: 'كولومبيا هويلا',
-      origin: 'كولومبيا',
-      notes: 'كراميل، تفاح أخضر، شوكولاتة',
-      method: 'V60',
-      price: '٢٥',
-    },
-    {
-      name: 'كينيا AA',
-      origin: 'كينيا',
-      notes: 'كشمش أسود، طماطم مجففة',
-      method: 'كيمكس',
-      price: '٣٠',
-    },
+    { name: 'إثيوبيا يرغاتشيف', notes: 'ياسمين، برغموت، حمضيات', method: 'تقطير بطيء', price: '٢٨' },
+    { name: 'كولومبيا هويلا', notes: 'كراميل، تفاح أخضر، شوكولاتة', method: 'V60', price: '٢٥' },
+    { name: 'كينيا AA', notes: 'كشمش أسود، طماطم مجففة', method: 'كيمكس', price: '٣٠' },
   ];
 
   return (
-    <section id="coffee" className="py-24 md:py-40 bg-warm-black relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 mb-20">
-          {/* Image */}
-          <div className="md:col-span-5 md:col-start-1">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={isInView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 1, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="aspect-[4/5] overflow-hidden"
-            >
+    <section id="coffee" style={{ padding: '96px 0', backgroundColor: '#1C1712', overflow: 'hidden' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 32, marginBottom: 80 }}>
+          <div style={{ gridColumn: 'span 5' }}>
+            <div className="reveal" style={{ aspectRatio: '4/5', overflow: 'hidden' }}>
               <img
                 src="https://image.qwenlm.ai/generated-images/b325b5da-ed27-4422-932d-7f05d1320185/_result.png"
                 alt="حبوب القهوة"
-                className="w-full h-full object-cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
-            </motion.div>
+            </div>
           </div>
 
-          {/* Header */}
-          <div className="md:col-span-5 md:col-start-7 flex flex-col justify-center">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
-              <p className="text-copper text-sm tracking-widest mb-6">اختيارات الموسم</p>
-              <h2 className="font-serif text-4xl md:text-5xl font-light text-cream leading-[1.2] mb-6">
+          <div style={{ gridColumn: 'span 5', gridColumnStart: 7, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div className="reveal reveal-delay-2">
+              <p style={{ color: '#A67C52', fontSize: 13, letterSpacing: '0.15em', marginBottom: 24 }}>اختيارات الموسم</p>
+              <h2 style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: 'clamp(32px, 4vw, 56px)',
+                fontWeight: 300,
+                color: '#F7F3ED',
+                lineHeight: 1.2,
+                marginBottom: 24,
+              }}>
                 حبوبٌ تحكي<br />
-                <span className="italic">قصة أرضها</span>
+                <span style={{ fontStyle: 'italic' }}>قصة أرضها</span>
               </h2>
-              <p className="text-warm-gray text-sm leading-[1.9] max-w-sm">
+              <p style={{ color: '#B8AFA3', fontSize: 14, lineHeight: 1.9, maxWidth: 360 }}>
                 نختار محاصيل الموسم بعناية من مزارع صغيرة في ثلاث قارات. كل كيس يحمل اسم المزرعة، وارتفاعها، وتاريخ الحصاد.
               </p>
-            </motion.div>
+            </div>
           </div>
         </div>
 
-        {/* Coffee list */}
-        <div ref={ref} className="border-t border-warm-brown/30">
-          {coffees.map((coffee, i) => (
-            <CoffeeItem key={i} coffee={coffee} index={i} />
+        <div style={{ borderTop: '1px solid rgba(61,50,40,0.3)' }}>
+          {coffees.map((c, i) => (
+            <div key={i} className={`reveal reveal-delay-${i + 1} coffee-item`} style={{ borderBottom: '1px solid rgba(61,50,40,0.3)', padding: '32px 0', cursor: 'pointer' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 16, alignItems: 'center' }}>
+                <div style={{ gridColumn: 'span 4' }}>
+                  <h3 className="coffee-name" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 300, color: '#F7F3ED' }}>
+                    {c.name}
+                  </h3>
+                </div>
+                <div style={{ gridColumn: 'span 3' }}>
+                  <p style={{ color: '#B8AFA3', fontSize: 14 }}>{c.notes}</p>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <p style={{ color: 'rgba(184,175,163,0.6)', fontSize: 12, letterSpacing: '0.05em' }}>{c.method}</p>
+                </div>
+                <div style={{ gridColumn: 'span 2', textAlign: 'left' }}>
+                  <p style={{ color: '#C4956A', fontSize: 20, fontFamily: "'Cormorant Garamond', serif" }}>
+                    {c.price} <span style={{ fontSize: 12, color: '#B8AFA3' }}>ر.س</span>
+                  </p>
+                </div>
+                <div style={{ gridColumn: 'span 1', display: 'flex', justifyContent: 'flex-end' }}>
+                  <div className="coffee-arrow" style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: '#B8AFA3' }}>
+                      <path d="M12 4L4 12M4 4H12V12" stroke="currentColor" strokeWidth="1" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -251,97 +281,49 @@ function CoffeeSection() {
   );
 }
 
-function CoffeeItem({ coffee, index }: { coffee: any; index: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-40px' });
-  const [isHovered, setIsHovered] = useState(false);
+// ─── Experience ──────────────────────────────────────────────────
+function Experience() {
+  const rituals = [
+    { num: '٠١', title: 'سكون', desc: 'صمت تام. لا موسيقى، لا محادثات. فقط أنت وقهوتك وأفكارك.' },
+    { num: '٠٢', title: 'همس', desc: 'موسيقى هادئة جدًا — بيانو أو عود — وصوت خافت للمحادثة.' },
+    { num: '٠٣', title: 'لقاء', desc: 'مساحة مفتوحة للحوار. نوصي به للأصدقاء والقراءات الجماعية.' },
+  ];
 
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay: index * 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="border-b border-warm-brown/30 py-8 md:py-10 cursor-pointer group"
-    >
-      <div className="grid grid-cols-12 gap-4 items-center">
-        <div className="col-span-12 md:col-span-4">
-          <h3 className={`font-serif text-2xl md:text-3xl font-light transition-colors duration-300 ${isHovered ? 'text-copper' : 'text-cream'}`}>
-            {coffee.name}
-          </h3>
-        </div>
-        <div className="col-span-6 md:col-span-3">
-          <p className="text-warm-gray text-sm">{coffee.notes}</p>
-        </div>
-        <div className="col-span-3 md:col-span-2">
-          <p className="text-warm-gray/60 text-xs tracking-wider">{coffee.method}</p>
-        </div>
-        <div className="col-span-3 md:col-span-2 text-left">
-          <p className="text-copper-light font-serif text-xl">{coffee.price} <span className="text-xs text-warm-gray">ر.س</span></p>
-        </div>
-        <div className="col-span-12 md:col-span-1 flex justify-start md:justify-end">
-          <motion.div
-            animate={{ rotate: isHovered ? -45 : 0, x: isHovered ? -4 : 0 }}
-            transition={{ duration: 0.3 }}
-            className="w-6 h-6 flex items-center justify-center"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-warm-gray group-hover:text-copper transition-colors duration-300">
-              <path d="M12 4L4 12M4 4H12V12" stroke="currentColor" strokeWidth="1" />
-            </svg>
-          </motion.div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
+    <section style={{ padding: '96px 0', backgroundColor: '#EDE6DA' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 64 }}>
+          <div style={{ gridColumn: 'span 6' }}>
+            <div className="reveal">
+              <p style={{ color: '#A67C52', fontSize: 13, letterSpacing: '0.15em', marginBottom: 24 }}>التجربة</p>
+              <h2 style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: 'clamp(28px, 3.5vw, 44px)',
+                fontWeight: 300,
+                color: '#1C1712',
+                lineHeight: 1.3,
+                marginBottom: 32,
+              }}>
+                ثلاثة طقوس،<br />
+                كلٌّ منها عالم
+              </h2>
+              <p style={{ color: '#3D3228', fontSize: 14, lineHeight: 1.9, maxWidth: 400 }}>
+                صمّمنا ثلاثة أوضاع مختلفة تناسب حالتك المزاجية. اختر ما يناسبك عند الدخول، ودعنا نتولى الباقي.
+              </p>
+            </div>
+          </div>
 
-// ─── Experience Section ────────────────────────────────────────────
-function ExperienceSection() {
-  const { ref, isInView } = useReveal();
-
-  return (
-    <section className="py-24 md:py-40 bg-cream-dark">
-      <div ref={ref} className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-16">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8 }}
-            className="md:col-span-6 md:col-start-1"
-          >
-            <p className="text-copper text-sm tracking-widest mb-6">التجربة</p>
-            <h2 className="font-serif text-3xl md:text-4xl font-light text-warm-black leading-[1.3] mb-8">
-              ثلاثة طقوس،<br />
-              كلٌّ منها عالم
-            </h2>
-            <p className="text-warm-brown text-sm leading-[1.9] max-w-md">
-              صمّمنا ثلاثة أوضاع مختلفة تناسب حالتك المزاجية. اختر ما يناسبك عند الدخول، ودعنا نتولى الباقي.
-            </p>
-          </motion.div>
-
-          <div className="md:col-span-5 md:col-start-8 space-y-12">
-            {[
-              { num: '٠١', title: 'سكون', desc: 'صمت تام. لا موسيقى، لا محادثات. فقط أنت وقهوتك وأفكارك.' },
-              { num: '٠٢', title: 'همس', desc: 'موسيقى هادئة جدًا — بيانو أو عود — وصوت خافت للمحادثة.' },
-              { num: '٠٣', title: 'لقاء', desc: 'مساحة مفتوحة للحوار. نوصي به للأصدقاء والقراءات الجماعية.' },
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={isInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.6, delay: 0.2 + i * 0.15 }}
-                className="flex gap-6 group"
-              >
-                <span className="font-serif text-3xl text-copper/40 group-hover:text-copper transition-colors duration-500">
-                  {item.num}
+          <div style={{ gridColumn: 'span 5', gridColumnStart: 8 }}>
+            {rituals.map((r, i) => (
+              <div key={i} className={`reveal reveal-delay-${i + 1} ritual-item`} style={{ display: 'flex', gap: 24, marginBottom: i < rituals.length - 1 ? 48 : 0 }}>
+                <span className="ritual-num" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, color: 'rgba(166,124,82,0.4)' }}>
+                  {r.num}
                 </span>
                 <div>
-                  <h3 className="font-serif text-xl text-warm-black mb-2">{item.title}</h3>
-                  <p className="text-warm-gray text-sm leading-[1.8]">{item.desc}</p>
+                  <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: '#1C1712', marginBottom: 8 }}>{r.title}</h3>
+                  <p style={{ color: '#B8AFA3', fontSize: 14, lineHeight: 1.8 }}>{r.desc}</p>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -350,106 +332,101 @@ function ExperienceSection() {
   );
 }
 
-// ─── Visit Section ─────────────────────────────────────────────────
-function VisitSection() {
-  const { ref, isInView } = useReveal();
-
+// ─── Visit ───────────────────────────────────────────────────────
+function Visit() {
   return (
-    <section id="visit" className="py-24 md:py-40 bg-warm-black relative">
-      <div ref={ref} className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 mb-20">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8 }}
-            className="md:col-span-6 md:col-start-1"
-          >
-            <p className="text-copper text-sm tracking-widest mb-6">زُرنا</p>
-            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl font-light text-cream leading-[1.2]">
-              بابنا<br />مفتوح لك
-            </h2>
-          </motion.div>
+    <section id="visit" style={{ padding: '96px 0', backgroundColor: '#1C1712' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 32, marginBottom: 80 }}>
+          <div style={{ gridColumn: 'span 6' }}>
+            <div className="reveal">
+              <p style={{ color: '#A67C52', fontSize: 13, letterSpacing: '0.15em', marginBottom: 24 }}>زُرنا</p>
+              <h2 style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: 'clamp(36px, 5vw, 72px)',
+                fontWeight: 300,
+                color: '#F7F3ED',
+                lineHeight: 1.2,
+              }}>
+                بابنا<br />مفتوح لك
+              </h2>
+            </div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="md:col-span-4 md:col-start-8 flex flex-col justify-end"
-          >
-            <div className="space-y-8">
+          <div style={{ gridColumn: 'span 4', gridColumnStart: 8, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+            <div className="reveal reveal-delay-2" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
               <div>
-                <p className="text-warm-gray text-xs tracking-widest mb-2">العنوان</p>
-                <p className="text-cream text-base">حي الملقا، شارع الأمير تركي</p>
-                <p className="text-cream/60 text-sm mt-1">الرياض، المملكة العربية السعودية</p>
+                <p style={{ color: '#B8AFA3', fontSize: 11, letterSpacing: '0.15em', marginBottom: 8 }}>العنوان</p>
+                <p style={{ color: '#F7F3ED', fontSize: 16 }}>حي الملقا، شارع الأمير تركي</p>
+                <p style={{ color: 'rgba(247,243,237,0.6)', fontSize: 14, marginTop: 4 }}>الرياض، المملكة العربية السعودية</p>
               </div>
               <div>
-                <p className="text-warm-gray text-xs tracking-widest mb-2">ساعات العمل</p>
-                <p className="text-cream text-sm">الأحد – الخميس: ٧ ص — ١١ م</p>
-                <p className="text-cream text-sm">الجمعة – السبت: ٢ م — ١٢ ص</p>
+                <p style={{ color: '#B8AFA3', fontSize: 11, letterSpacing: '0.15em', marginBottom: 8 }}>ساعات العمل</p>
+                <p style={{ color: '#F7F3ED', fontSize: 14 }}>الأحد – الخميس: ٧ ص — ١١ م</p>
+                <p style={{ color: '#F7F3ED', fontSize: 14 }}>الجمعة – السبت: ٢ م — ١٢ ص</p>
               </div>
               <div>
-                <p className="text-warm-gray text-xs tracking-widest mb-2">تواصل</p>
-                <a href="#" className="text-copper hover-line text-sm">info@sukoon.coffee</a>
+                <p style={{ color: '#B8AFA3', fontSize: 11, letterSpacing: '0.15em', marginBottom: 8 }}>تواصل</p>
+                <a href="mailto:info@sukoon.coffee" className="hover-line" style={{ color: '#A67C52', fontSize: 14, textDecoration: 'none' }}>
+                  info@sukoon.coffee
+                </a>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
 
-        {/* Map placeholder */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : {}}
-          transition={{ duration: 1, delay: 0.4 }}
-          className="w-full h-48 md:h-64 bg-warm-dark border border-warm-brown/20 flex items-center justify-center relative overflow-hidden"
-        >
-          <div className="absolute inset-0 opacity-10">
+        <div className="reveal reveal-delay-3" style={{
+          width: '100%', height: 220, backgroundColor: '#2A2320',
+          border: '1px solid rgba(61,50,40,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.1 }}>
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-warm-gray" />
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#B8AFA3" strokeWidth="0.5" />
                 </pattern>
               </defs>
               <rect width="100%" height="100%" fill="url(#grid)" />
             </svg>
           </div>
-          <div className="text-center z-10">
-            <div className="w-3 h-3 bg-copper rounded-full mx-auto mb-3 animate-pulse" />
-            <p className="text-warm-gray text-sm">حي الملقا، الرياض</p>
+          <div style={{ textAlign: 'center', zIndex: 10 }}>
+            <div style={{ width: 12, height: 12, backgroundColor: '#A67C52', borderRadius: '50%', margin: '0 auto 12px', animation: 'pulse 2s ease-in-out infinite' }} />
+            <p style={{ color: '#B8AFA3', fontSize: 14 }}>حي الملقا، الرياض</p>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
 }
 
-// ─── Footer ────────────────────────────────────────────────────────
+// ─── Footer ──────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer className="bg-warm-black border-t border-warm-brown/20 py-12">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="font-serif text-2xl text-cream/80">سُكون</div>
-          <p className="text-warm-gray/50 text-xs text-center md:text-right">
-            © ٢٠٢٤ سُكون. صُمّم بعناية في الرياض.
-          </p>
-        </div>
+    <footer style={{ backgroundColor: '#1C1712', borderTop: '1px solid rgba(61,50,40,0.2)', padding: '48px 0' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: 'rgba(247,243,237,0.8)' }}>سُكون</div>
+        <p style={{ color: 'rgba(184,175,163,0.5)', fontSize: 12 }}>© ٢٠٢٤ سُكون. صُمّم بعناية في الرياض.</p>
       </div>
     </footer>
   );
 }
 
-// ─── Main App ──────────────────────────────────────────────────────
+// ─── App ─────────────────────────────────────────────────────────
 export default function App() {
+  useRevealOnScroll();
+
   return (
-    <div className="min-h-screen bg-cream">
+    <div style={{ minHeight: '100vh', backgroundColor: '#F7F3ED' }}>
       <Navigation />
-      <HeroSection />
+      <Hero />
       <Divider />
-      <PhilosophySection />
+      <Philosophy />
       <Divider />
-      <CoffeeSection />
-      <ExperienceSection />
-      <VisitSection />
+      <Coffee />
+      <Experience />
+      <Visit />
       <Footer />
     </div>
   );
